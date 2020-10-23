@@ -121,10 +121,14 @@ int main(void)
   while (1)
   {
 	  if(mFlags.PPS){
+		  // Atstatyti veliava
 		  mFlags.PPS=0;
 
-		  HAL_UART_Receive(&huart1, mGPS_UART_Buffer, 1000, 900);
-		  HAL_UART_Transmit(&huart6, mGPS_UART_Buffer, 1000, 10);
+		  // Nuskaityti GPS duomenis
+		  HAL_UART_Receive(&huart1, mGPS_UART_Buffer, 1000, 800);
+
+		  // Nuskaitytus duomenis persiusti per UART6
+		  HAL_UART_Transmit(&huart6, mGPS_UART_Buffer, strlen((char*)mGPS_UART_Buffer), 10);
 	  }
 
     /* USER CODE END WHILE */
