@@ -75,7 +75,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   /* Prevent unused argument(s) compilation warning */
   UNUSED(huart);
-  HAL_UART_Transmit(&huart6, mGPS_UART_Buffer, 10, 10);
+  HAL_UART_Transmit(&huart6, mGPS_UART_Buffer, 700, 10);
 }
 
 /* USER CODE END 0 */
@@ -113,7 +113,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_DMA(&huart1, mGPS_UART_Buffer, 10);
+  HAL_UART_Receive_DMA(&huart1, mGPS_UART_Buffer, 700);
 
   /* USER CODE END 2 */
 
