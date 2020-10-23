@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdlib.h>
 #include <string.h>
 
 /* USER CODE END Includes */
@@ -72,12 +73,9 @@ static void MX_USART1_UART_Init(void);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(huart);
-  HAL_UART_Transmit(&huart6, mGPS_UART_Buffer, 700, 10);
-}
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+
+uint16_t getNewlineIndex(uint8_t* array, uint16_t size, uint16_t num);
 
 /* USER CODE END 0 */
 
@@ -118,6 +116,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int16_t beginning=0, end=0, ilgis;
+  uint8_t* newArray;
   while (1)
   {
 	  if(mFlags.PPS){
@@ -127,8 +127,24 @@ int main(void)
 		  // Nuskaityti GPS duomenis
 		  HAL_UART_Receive(&huart1, mGPS_UART_Buffer, 1000, 800);
 
-		  // Nuskaitytus duomenis persiusti per UART6
-		  HAL_UART_Transmit(&huart6, mGPS_UART_Buffer, strlen((char*)mGPS_UART_Buffer), 10);
+		  // Surasti nuskaitytos zinutes ilgi
+		  ilgis=strlen((char*)mGPS_UART_Buffer);
+
+		  // Surasti reikiamos eilutes pradzia ir pabaiga
+		  beginning = getNewlineIndex(mGPS_UART_Buffer, ilgis, 1);
+		  end = getNewlineIndex(mGPS_UART_Buffer, ilgis, 2);
+
+		  ilgis=end-beginning;	// Surinktos eilutes ilgis
+		  newArray = (uint8_t *) calloc(end-beginning, sizeof(uint8_t));	// Priskirti vieta
+		  memcpy(newArray, &mGPS_UART_Buffer[beginning], ilgis);	// Perkelti reikalinga dali
+
+		  HAL_UART_Transmit(&huart6, newArray, ilgis, 10);
+
+		  free(newArray);
+
+		  // Nunulinti masyva
+		  memset(mGPS_UART_Buffer, 0, sizeof mGPS_UART_Buffer);
+
 	  }
 
     /* USER CODE END WHILE */
@@ -326,9 +342,31 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	  // Duoti zenkla, kad bus siunciami duomenys is GPS, juos nuskaityti while(0) cikle
 	  mFlags.PPS = 1;
   }
-
 }
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(huart);
+  if(huart==&huart6){
+	  HAL_UART_Transmit(&huart6, mGPS_UART_Buffer, 700, 10);
+  }
+}
+
+uint16_t getNewlineIndex(uint8_t* array, uint16_t size, uint16_t num){
+	if(num>=1){
+		uint16_t counter=0;
+		for(uint16_t i=0;i<size-1;i++){
+			if(array[i]==13 && array[i+1]==10){
+				counter++;
+
+				if(counter==num)
+					return i+2;
+			}
+		}
+	}
+	return 0;
+}
 /* USER CODE END 4 */
 
 /**
