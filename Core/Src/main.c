@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -52,7 +53,7 @@ struct {
 	uint8_t unused:7;
 } mFlags;
 
-uint8_t mGPS_UART_Buffer[1000]={'A'};
+uint8_t mGPS_UART_Buffer[1000];
 
 /* USER CODE END PV */
 
@@ -113,14 +114,19 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_DMA(&huart1, mGPS_UART_Buffer, 700);
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(mFlags.PPS){
+		  mFlags.PPS=0;
+
+		  HAL_UART_Receive(&huart1, mGPS_UART_Buffer, 1000, 900);
+		  HAL_UART_Transmit(&huart6, mGPS_UART_Buffer, 1000, 10);
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -221,7 +227,7 @@ static void MX_USART6_UART_Init(void)
 
   /* USER CODE END USART6_Init 1 */
   huart6.Instance = USART6;
-  huart6.Init.BaudRate = 9600;
+  huart6.Init.BaudRate = 1000000;
   huart6.Init.WordLength = UART_WORDLENGTH_8B;
   huart6.Init.StopBits = UART_STOPBITS_1;
   huart6.Init.Parity = UART_PARITY_NONE;
@@ -314,7 +320,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 
 	  // Duoti zenkla, kad bus siunciami duomenys is GPS, juos nuskaityti while(0) cikle
-	  mFlags.PPS=1;
+	  mFlags.PPS = 1;
   }
 
 }
