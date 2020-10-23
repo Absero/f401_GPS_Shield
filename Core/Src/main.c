@@ -117,7 +117,6 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   int16_t beginning=0, end=0, ilgis;
-  uint8_t* newArray;
   while (1)
   {
 	  if(mFlags.PPS){
@@ -135,12 +134,10 @@ int main(void)
 		  end = getNewlineIndex(mGPS_UART_Buffer, ilgis, 2);
 
 		  ilgis=end-beginning;	// Surinktos eilutes ilgis
-		  newArray = (uint8_t *) calloc(end-beginning, sizeof(uint8_t));	// Priskirti vieta
-		  memcpy(newArray, &mGPS_UART_Buffer[beginning], ilgis);	// Perkelti reikalinga dali
 
-		  HAL_UART_Transmit(&huart6, newArray, ilgis, 10);
+		  // Persiusti masyva per UART
+		  HAL_UART_Transmit(&huart6, &mGPS_UART_Buffer[beginning], ilgis, 10);
 
-		  free(newArray);
 
 		  // Nunulinti masyva
 		  memset(mGPS_UART_Buffer, 0, sizeof mGPS_UART_Buffer);
