@@ -128,6 +128,7 @@ int main(void)
 
 		  // Surasti nuskaitytos zinutes ilgi
 		  ilgis=strlen((char*)mGPS_UART_Buffer);
+//  		  HAL_UART_Transmit(&huart6, mGPS_UART_Buffer, ilgis, 10);	// Pilnas paketas
 
 		  // Surasti reikiamos eilutes pradzia ir pabaiga
 		  beginning = getNewlineIndex(mGPS_UART_Buffer, ilgis, 1);
@@ -137,7 +138,6 @@ int main(void)
 
 		  // Persiusti masyva per UART
 		  HAL_UART_Transmit(&huart6, &mGPS_UART_Buffer[beginning], ilgis, 10);
-
 
 		  // Nunulinti masyva
 		  memset(mGPS_UART_Buffer, 0, sizeof mGPS_UART_Buffer);
