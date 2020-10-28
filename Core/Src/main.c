@@ -211,6 +211,7 @@ int main(void)
 		  gyr_yy=unpacked[1]*8.75/1000;
 		  gyr_zz=unpacked[2]*8.75/1000;
 		  acc_xx=unpacked[3]*0.061;
+		  //komentaras
 		  acc_yy=unpacked[4]*0.061;
 		  acc_zz=unpacked[5]*0.061;
 
