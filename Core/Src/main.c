@@ -50,6 +50,11 @@ DMA_HandleTypeDef hdma_usart6_tx;
 
 /* USER CODE BEGIN PV */
 
+struct{
+  uint8_t PPS : 1;
+  uint8_t unused : 7;
+} g_flags;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -110,6 +115,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(g_flags.PPS){
+		  g_flags.PPS=0;
+		  uint8_t testArray[]="Hello world!\r\n";
+		  HAL_UART_Transmit_DMA(&huart6, testArray, sizeof(testArray)/sizeof(uint8_t)-1);
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -325,6 +336,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   if (GPIO_Pin == GPIO_PIN_10)
   {
     // Duoti zenkla, kad bus siunciami duomenys is GPS, juos nuskaityti while(0) cikle
+	  g_flags.PPS=1;
   }
 }
 
