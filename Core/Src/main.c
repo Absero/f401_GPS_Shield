@@ -184,7 +184,7 @@ int main(void)
 
       // Surasti nuskaitytos zinutes ilgi
       ilgis = strlen((char *)g_GPS_UART_buffer);
-      HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, ilgis); // Pilnas paketas
+//      HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, ilgis); // Pilnas paketas
 
       // Surasti reikiamos eilutes pradzia ir pabaiga
       beginning = getNewlineIndex(g_GPS_UART_buffer, ilgis, 1);
@@ -205,6 +205,7 @@ int main(void)
     HAL_I2C_Mem_Write(&hi2c1, _LSM6DSL_ADDRESS, _LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
     HAL_I2C_Mem_Write(&hi2c1, _LSM6DSL_ADDRESS, _LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
     HAL_I2C_Mem_Read(&hi2c1, _LSM6DSL_ADDRESS, _LSM6DSL_OUTX_L_G, 1, data_acc_gyr, 12, 10);
+
     //____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
     int k = 0;
     for (int i = 0; i < 6; i++)
