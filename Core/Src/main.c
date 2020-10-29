@@ -16,6 +16,13 @@
  *
  ******************************************************************************
  */
+
+/*
+ * 	crc skaiciavimui:
+ * 	https://nmeachecksum.eqth.net
+ *
+ */
+
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -24,6 +31,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -61,7 +69,7 @@ struct {
 
 uint8_t g_GPS_UART_buffer[_GPS_UART_BUFFER_SIZE];
 
-uint8_t onebyte[100];
+uint8_t onebyte[1];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -122,50 +130,57 @@ int main(void) {
 	MX_USART1_UART_Init();
 	MX_I2C1_Init();
 	/* USER CODE BEGIN 2 */
-	HAL_UART_Receive_DMA(&huart1, onebyte, 1);
-	uint8_t messageArray[] = "$PSTMGETSWVER\r\n";
-//	HAL_UART_Transmit(&huart1, messageArray, sizeof(messageArray) / sizeof(uint8_t) - 1, 10);
-//   Change GPS communication baud
-//	uint8_t messageArray[] = "$PSTMSETPAR,3102,0x9*6A\r\n";
-//	HAL_UART_Transmit(&huart1, messageArray, sizeof(messageArray) / sizeof(uint8_t) - 1, 10);
-//
-//	uint8_t messageArray1[] = "$PSTMSAVEPAR*58\r\n";
-//	HAL_UART_Transmit(&huart1, messageArray1, sizeof(messageArray1) / sizeof(uint8_t) - 1, 10);
-//	HAL_Delay(10);
-//
-//	uint8_t messageArray2[] = "$PSTMSRR*49\r\n";
-//	HAL_UART_Transmit(&huart1, messageArray2, sizeof(messageArray2) / sizeof(uint8_t) - 1, 10);
-//	HAL_Delay(100);
-// Pakeisti porto baud
-//  huart6.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 115200);
+
+	// Svarbu keisti be antenos, nes tada periodine zinute trumpiausia
+#define targetBaud 230400
+#if targetBaud==230400
+	uint8_t messageArray[] = "$PSTMSETPAR,3102,0xB*11\r\n$PSTMSAVEPAR*58\r\n$PSTMSRR*49\r\n";  //230400
+	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 9600);		// dabartinis baud
+#elif targetBaud==9600
+	uint8_t messageArray[] = "$PSTMSETPAR,3102,0x5*66\r\n$PSTMSAVEPAR*58\r\n$PSTMSRR*49\r\n";  //9600
+	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 230400);  	// dabartinis baud
+#endif
+
+//	Nusiusti nustatymus
+#if targetBaud
+	while (!g_flags.PPS);	//palaukt zinutes pradzios
+	g_flags.PPS = 0;
+	HAL_Delay(750);  //palaukt kol pasibaigs zinute
+
+	HAL_UART_Receive_DMA(&huart1, onebyte, 1);		//pradet DMA kad pamatyt atsakyma
+	HAL_UART_Transmit_DMA(&huart1, messageArray, sizeof(messageArray) - 1);  //issiust zinute
+	HAL_Delay(230);  								//palaukt atsakymo
+	HAL_UART_DMAStop(&huart1);						//sustabdyt kad nebegaut periodiniu duomenu
+	HAL_Delay(10);
+#endif
+
+//	Pakeisti porto baud
+#if targetBaud==230400
+	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 230400);		// naujas baud
+#elif targetBaud==9600
+	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 9600);		// naujas baud
+#endif
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
-//	int16_t length;
+
+	HAL_UART_Receive_DMA(&huart1, onebyte, 1);	//pradet DMA (generuoja LABAI daug pertraukciu, gali trukdyt kitiem testam. Isjungus naudot PPS pertraukti)
 	while (1) {
 
-		if (g_flags.PPS) {
-			g_flags.PPS = 0;
-
+		//patestuot ar gaunamas atsakymas kaip labore
+//		if (g_flags.PPS) {
+//			g_flags.PPS = 0;
+//
 //// 			Isvalyti masyva
 //			memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
 //
 //			// Nuskaityti GPS duomenis
-//			HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 800);
+//			HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 300);
 //
 //			// Surasti nuskaitytos zinutes ilgi
-//			length = strlen((char*) g_GPS_UART_buffer);
-//			HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, length);  // Pilnas paketas
-//
-//			HAL_UART_Transmit(&huart1, messageArray, sizeof(messageArray) / sizeof(uint8_t) - 1, 10);
-//			HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 50);
-
-			HAL_Delay(800);
-			HAL_UART_Transmit_DMA(&huart1, messageArray, sizeof(messageArray) - 1);
-
-		}
-
+//			HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, strlen((char*) g_GPS_UART_buffer));  // Pilnas paketas
+//		}
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
