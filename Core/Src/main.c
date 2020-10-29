@@ -128,11 +128,6 @@ static void MX_I2C1_Init(void);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
-	UNUSED(huart);
-}
-
 uint16_t getNewlineIndex(uint8_t *array, uint16_t size, uint16_t num);
 
 /* USER CODE END 0 */
@@ -486,16 +481,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   {
     // Duoti zenkla, kad bus siunciami duomenys is GPS, juos nuskaityti while(0) cikle
     g_flags.PPS = 1;
-  }
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(huart);
-  if (huart == &huart6)
-  {
-    HAL_UART_Transmit(&huart6, g_GPS_UART_buffer, 700, 10);
   }
 }
 
