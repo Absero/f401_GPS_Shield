@@ -22,6 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdlib.h>
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -32,6 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define _GPS_UART_BUFFER_SIZE 2000
 
 /* USER CODE END PD */
 
@@ -55,6 +58,7 @@ struct{
   uint8_t unused : 7;
 } g_flags;
 
+uint8_t g_GPS_UART_buffer[_GPS_UART_BUFFER_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,6 +71,8 @@ static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+
+uint16_t getNewlineIndex(uint8_t *array, uint16_t size, uint16_t num);
 
 /* USER CODE END PFP */
 
@@ -108,17 +114,56 @@ int main(void)
   MX_USART1_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(2000);
+
+//   Change GPS communication baud
+  uint8_t messageArray[]="$PSTMSETPAR,3102,0xB\r\n";
+  HAL_UART_Transmit(&huart1, messageArray, sizeof(messageArray)/sizeof(uint8_t)-1,10);
+  HAL_Delay(10);
+
+  uint8_t messageArray1[]="$PSTMSAVEPAR\r\n";
+  HAL_UART_Transmit(&huart1, messageArray1, sizeof(messageArray1)/sizeof(uint8_t)-1,10);
+  HAL_Delay(10);
+
+  uint8_t messageArray2[]="$PSTMSRR\r\n";
+  HAL_UART_Transmit(&huart1, messageArray2, sizeof(messageArray2)/sizeof(uint8_t)-1,10);
+  HAL_Delay(100);
+
+//  huart6.Instance->BRR = UART_BRR_SAMPLING8(HAL_RCC_GetPCLK1Freq(), 230400);
+//  huart6.Instance->BRR = UART_BRR_SAMPLING8(HAL_RCC_GetPCLK1Freq(), 115200);
+
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int16_t beginning = 0, end = 0, length;
   while (1)
   {
 	  if(g_flags.PPS){
 		  g_flags.PPS=0;
-		  uint8_t testArray[]="Hello world!\r\n";
-		  HAL_UART_Transmit_DMA(&huart6, testArray, sizeof(testArray)/sizeof(uint8_t)-1);
+//		  uint8_t testArray[]="Hello world!\r\n";
+//		  HAL_UART_Transmit_DMA(&huart6, testArray, sizeof(testArray)/sizeof(uint8_t)-1);
+
+
+	      // Isvalyti masyva
+	      memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
+
+	      // Nuskaityti GPS duomenis
+	      HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 700);
+
+	      // Surasti nuskaitytos zinutes ilgi
+	      length = strlen((char *)g_GPS_UART_buffer);
+	      HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, length); // Pilnas paketas
+
+	      // Surasti reikiamos eilutes pradzia ir pabaiga
+	      beginning = getNewlineIndex(g_GPS_UART_buffer, length, 1);
+	      end = getNewlineIndex(g_GPS_UART_buffer, length, 2);
+
+	      length = end - beginning; // Surinktos eilutes ilgis
+
+	      // Persiusti masyva per UART
+	//      HAL_UART_Transmit_DMA(&huart6, &g_GPS_UART_buffer[beginning], length);
 	  }
 
     /* USER CODE END WHILE */
@@ -338,6 +383,25 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     // Duoti zenkla, kad bus siunciami duomenys is GPS, juos nuskaityti while(0) cikle
 	  g_flags.PPS=1;
   }
+}
+
+uint16_t getNewlineIndex(uint8_t *array, uint16_t size, uint16_t num)
+{
+  if (num >= 1)
+  {
+    uint16_t counter = 0;
+    for (uint16_t i = 0; i < size - 1; i++)
+    {
+      if (array[i] == 13 && array[i + 1] == 10)
+      {
+        counter++;
+
+        if (counter == num)
+          return i + 2;
+      }
+    }
+  }
+  return 0;
 }
 
 /* USER CODE END 4 */
