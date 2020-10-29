@@ -114,23 +114,24 @@ int main(void)
   MX_USART1_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+
   HAL_Delay(2000);
 
 //   Change GPS communication baud
-  uint8_t messageArray[]="$PSTMSETPAR,3102,0xB\r\n";
-  HAL_UART_Transmit(&huart1, messageArray, sizeof(messageArray)/sizeof(uint8_t)-1,10);
-  HAL_Delay(10);
 
-  uint8_t messageArray1[]="$PSTMSAVEPAR\r\n";
+  uint8_t messageArray[]="$PSTMSETPAR,3102,0x9*6A\r\n";
+  HAL_UART_Transmit(&huart1, messageArray, sizeof(messageArray)/sizeof(uint8_t)-1,10);
+
+  uint8_t messageArray1[]="$PSTMSAVEPAR*58\r\n";
   HAL_UART_Transmit(&huart1, messageArray1, sizeof(messageArray1)/sizeof(uint8_t)-1,10);
   HAL_Delay(10);
 
-  uint8_t messageArray2[]="$PSTMSRR\r\n";
+  uint8_t messageArray2[]="$PSTMSRR*49\r\n";
   HAL_UART_Transmit(&huart1, messageArray2, sizeof(messageArray2)/sizeof(uint8_t)-1,10);
   HAL_Delay(100);
 
-//  huart6.Instance->BRR = UART_BRR_SAMPLING8(HAL_RCC_GetPCLK1Freq(), 230400);
-//  huart6.Instance->BRR = UART_BRR_SAMPLING8(HAL_RCC_GetPCLK1Freq(), 115200);
+  // Pakeisti porto baud
+//  huart6.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 115200);
 
 
   /* USER CODE END 2 */
