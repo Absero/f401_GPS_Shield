@@ -33,6 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define _GPS_UART_BUFFER_SIZE 2000
 
 #define _LSM6DSL_ADDRESS 0xD7
 #define _LSM6DSL_CTRL3_C 0x12    // control register for incrementing
@@ -71,7 +72,7 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart6;
 DMA_HandleTypeDef hdma_usart1_tx;
-DMA_HandleTypeDef hdma_usart6_rx;
+DMA_HandleTypeDef hdma_usart6_tx;
 
 /* USER CODE BEGIN PV */
 
@@ -81,7 +82,7 @@ struct
   uint8_t unused : 7;
 } g_flags;
 
-uint8_t g_GPS_UART_buffer[1000];
+uint8_t g_GPS_UART_buffer[_GPS_UART_BUFFER_SIZE];
 
 uint8_t reg_increment[1] = {0x04};           // register increment
 uint8_t acc_gyr_on_values[2] = {0x50, 0x50}; // turn on acc and gyr
@@ -128,6 +129,9 @@ static void MX_I2C1_Init(void);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
+	UNUSED(huart);
+}
 
 uint16_t getNewlineIndex(uint8_t *array, uint16_t size, uint16_t num);
 
@@ -166,12 +170,12 @@ int main(void)
   MX_USART1_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  //testas dar vienas
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int16_t beginning = 0, end = 0, ilgis;
+  int16_t beginning = 0, end = 0, length;
   while (1)
   {
     if (g_flags.PPS)
@@ -179,24 +183,25 @@ int main(void)
       // Atstatyti veliava
       g_flags.PPS = 0;
 
+      // Isvalyti masyva
+      memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
+
       // Nuskaityti GPS duomenis
-      HAL_UART_Receive(&huart1, g_GPS_UART_buffer, 1000, 800);
+      HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 700);
 
       // Surasti nuskaitytos zinutes ilgi
-      ilgis = strlen((char *)g_GPS_UART_buffer);
-//      HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, ilgis); // Pilnas paketas
+      length = strlen((char *)g_GPS_UART_buffer);
+      HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, length); // Pilnas paketas
 
       // Surasti reikiamos eilutes pradzia ir pabaiga
-      beginning = getNewlineIndex(g_GPS_UART_buffer, ilgis, 1);
-      end = getNewlineIndex(g_GPS_UART_buffer, ilgis, 2);
+      beginning = getNewlineIndex(g_GPS_UART_buffer, length, 1);
+      end = getNewlineIndex(g_GPS_UART_buffer, length, 2);
 
-      ilgis = end - beginning; // Surinktos eilutes ilgis
+      length = end - beginning; // Surinktos eilutes ilgis
 
       // Persiusti masyva per UART
-      HAL_UART_Transmit_DMA(&huart6, &g_GPS_UART_buffer[beginning], ilgis);
+//      HAL_UART_Transmit_DMA(&huart6, &g_GPS_UART_buffer[beginning], length);
 
-      // Nunulinti masyva
-      memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
     }
 
     //________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
@@ -303,7 +308,8 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -346,6 +352,7 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
 }
 
 /**
@@ -378,6 +385,7 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 2 */
 
   /* USER CODE END USART1_Init 2 */
+
 }
 
 /**
@@ -410,6 +418,7 @@ static void MX_USART6_UART_Init(void)
   /* USER CODE BEGIN USART6_Init 2 */
 
   /* USER CODE END USART6_Init 2 */
+
 }
 
 /**
@@ -422,12 +431,13 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
-  /* DMA2_Stream1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+  /* DMA2_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
   /* DMA2_Stream7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
+
 }
 
 /**
@@ -450,7 +460,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPS_Reset_GPIO_Port, GPS_Reset_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : GPS_WakeUp_Pin GPS_Reset_Pin */
-  GPIO_InitStruct.Pin = GPS_WakeUp_Pin | GPS_Reset_Pin;
+  GPIO_InitStruct.Pin = GPS_WakeUp_Pin|GPS_Reset_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -465,6 +475,7 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
@@ -520,7 +531,7 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
+#ifdef  USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
