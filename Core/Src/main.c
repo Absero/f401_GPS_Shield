@@ -123,7 +123,7 @@ int main(void) {
 	MX_I2C1_Init();
 	/* USER CODE BEGIN 2 */
 	HAL_UART_Receive_DMA(&huart1, onebyte, 1);
-//	uint8_t messageArray[] = "$PSTMGETSWVER\r\n";
+	uint8_t messageArray[] = "$PSTMGETSWVER\r\n";
 //	HAL_UART_Transmit(&huart1, messageArray, sizeof(messageArray) / sizeof(uint8_t) - 1, 10);
 //   Change GPS communication baud
 //	uint8_t messageArray[] = "$PSTMSETPAR,3102,0x9*6A\r\n";
@@ -145,9 +145,9 @@ int main(void) {
 //	int16_t length;
 	while (1) {
 
-//		if (g_flags.PPS) {
-//			g_flags.PPS = 0;
-//
+		if (g_flags.PPS) {
+			g_flags.PPS = 0;
+
 //// 			Isvalyti masyva
 //			memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
 //
@@ -160,7 +160,11 @@ int main(void) {
 //
 //			HAL_UART_Transmit(&huart1, messageArray, sizeof(messageArray) / sizeof(uint8_t) - 1, 10);
 //			HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 50);
-//		}
+
+			HAL_Delay(800);
+			HAL_UART_Transmit_DMA(&huart1, messageArray, sizeof(messageArray) - 1);
+
+		}
 
 		/* USER CODE END WHILE */
 
