@@ -184,7 +184,7 @@ int main(void) {
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
-	uint16_t beginning = 0, end = 0, length = 0, combocounter = 0;
+	uint16_t beginning = 0, end = 0, length = 0;
 	while (1) {
 		//==================================== GPS PPS ====================================
 		if (gFlags.PPS) {
@@ -197,11 +197,9 @@ int main(void) {
 
 			// Nuskaityti GPS duomenis
 			HAL_UART_Receive(&huart1, gGPS_UART_buffer, GPS_UART_BUFFER_SIZE, 150);
-//			HAL_UART_Transmit_DMA(&huart6, gGPS_UART_buffer, strlen((char*) gGPS_UART_buffer) - 1);
 
 			// Resetint Timerio perioda ir duot zenkla kad reikia perziuret gps duomenis
 			gFlags.GPSDataProcessed = 0;
-			combocounter = 1;
 		}
 
 		//==================================== Timer IT ===================================
@@ -227,25 +225,19 @@ int main(void) {
 //				end = getNewlineIndex(gGPS_UART_buffer, length, 2);
 
 				beginning = end = 0;
-				for (uint16_t i = 4; i < strlen((char*) gGPS_UART_buffer); i++) {
+				for (uint16_t i = 1; i < strlen((char*) gGPS_UART_buffer); i++)
 					if (beginning == 0) {
-						if (gGPS_UART_buffer[i] == '$') {
-							beginning = i;
-						}
-					} else {
-						if (gGPS_UART_buffer[i] == '\r') {
-							end = i + 2;
-							break;
-						}
+						if (gGPS_UART_buffer[i] == '$') beginning = i;
+					} else if (gGPS_UART_buffer[i] == '\r') {
+						end = i + 2;
+						break;
 					}
-				}
-
 				length = end - beginning;
 
-				pFullPeriodicPacket = (uint8_t*) realloc(pFullPeriodicPacket, length);
+				pFullPeriodicPacket = (uint8_t*) realloc(pFullPeriodicPacket, length + 12);
 
-				memcpy(pFullPeriodicPacket, &gGPS_UART_buffer[beginning], length);
-				HAL_UART_Transmit(&huart6, pFullPeriodicPacket, length, 10);
+				memcpy(pFullPeriodicPacket + 12, &gGPS_UART_buffer[beginning], length);
+				HAL_UART_Transmit(&huart6, pFullPeriodicPacket + 12, length + 12, 10);
 				gFlags.GPSDataProcessed = 1;
 			}	// Naujausios eilutes is GPS masyvo paruosimas
 //
