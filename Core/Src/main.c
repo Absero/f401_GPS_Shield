@@ -69,6 +69,8 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+TIM_HandleTypeDef htim11;
+
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart6;
 DMA_HandleTypeDef hdma_usart1_tx;
@@ -77,8 +79,9 @@ DMA_HandleTypeDef hdma_usart6_tx;
 /* USER CODE BEGIN PV */
 
 struct{
-  uint8_t PPS : 1;
-  uint8_t unused : 7;
+  uint8_t PPS 		: 1;
+  uint8_t timer11	: 1;
+  uint8_t unused	: 6;
 } gFlags;
 
 uint8_t gGPS_UART_buffer[GPS_UART_BUFFER_SIZE];
@@ -120,6 +123,7 @@ static void MX_DMA_Init(void);
 static void MX_USART6_UART_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_TIM11_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -128,6 +132,8 @@ static void MX_I2C1_Init(void);
 /* USER CODE BEGIN 0 */
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
 uint16_t getNewlineIndex(uint8_t *array, uint16_t size, uint16_t num);
 
@@ -165,7 +171,9 @@ int main(void)
   MX_USART6_UART_Init();
   MX_USART1_UART_Init();
   MX_I2C1_Init();
+  MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim11);
 
   /* USER CODE END 2 */
 
@@ -196,6 +204,11 @@ int main(void)
       // Persiusti masyva per UART
       HAL_UART_Transmit_DMA(&huart6, &gGPS_UART_buffer[beginning], length);
     }
+
+	if(gFlags.timer11){
+		gFlags.timer11=0;
+		//todo
+	}
 
     //________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
     // Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
@@ -339,6 +352,37 @@ static void MX_I2C1_Init(void)
 }
 
 /**
+  * @brief TIM11 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM11_Init(void)
+{
+
+  /* USER CODE BEGIN TIM11_Init 0 */
+
+  /* USER CODE END TIM11_Init 0 */
+
+  /* USER CODE BEGIN TIM11_Init 1 */
+
+  /* USER CODE END TIM11_Init 1 */
+  htim11.Instance = TIM11;
+  htim11.Init.Prescaler = 42000-1;
+  htim11.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim11.Init.Period = (2*245)-1;
+  htim11.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim11.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim11) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM11_Init 2 */
+
+  /* USER CODE END TIM11_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -354,7 +398,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 9600;
+  huart1.Init.BaudRate = 230400;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -463,8 +507,7 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   if (GPIO_Pin == GPIO_PIN_10)
   {
     // Duoti zenkla, kad bus siunciami duomenys is GPS, juos nuskaityti while(0) cikle
@@ -472,8 +515,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   }
 }
 
-uint16_t getNewlineIndex(uint8_t *array, uint16_t size, uint16_t num)
-{
+uint16_t getNewlineIndex(uint8_t *array, uint16_t size, uint16_t num){
   if (num >= 1)
   {
     uint16_t counter = 0;
@@ -489,6 +531,15 @@ uint16_t getNewlineIndex(uint8_t *array, uint16_t size, uint16_t num)
     }
   }
   return 0;
+}
+
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(htim);
+  if(htim->Instance==TIM11){
+	  gFlags.timer11=1;
+  }
 }
 /* USER CODE END 4 */
 
