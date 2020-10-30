@@ -181,6 +181,10 @@ int main(void) {
 	/* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim11);
 
+	//LSM6DSL init
+	HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
+	HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
+	HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
@@ -209,9 +213,6 @@ int main(void) {
 
 			//________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
 			// Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
-			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
-			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
-			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
 			HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_OUTX_L_G, 1, gAccGyro.data_acc_gyr, 12, 10);
 
 			//____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
