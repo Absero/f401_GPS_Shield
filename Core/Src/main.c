@@ -241,7 +241,7 @@ int main(void) {
 			}	// Naujausios eilutes is GPS masyvo paruosimas
 //
 //			// Atnaujinti sensoriu duomenis
-			memcpy(pFullPeriodicPacket, &gAccGyro.acc_xx, 12);
+			memcpy(pFullPeriodicPacket, &gAccGyro.data_acc_gyr, 12);
 			HAL_UART_Transmit(&huart6, pFullPeriodicPacket, length + 12, 10);
 		}
 //
