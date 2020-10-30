@@ -79,12 +79,15 @@ DMA_HandleTypeDef hdma_usart6_tx;
 /* USER CODE BEGIN PV */
 
 struct{
-  uint8_t PPS 		: 1;
-  uint8_t timer11	: 1;
-  uint8_t unused	: 6;
+  uint8_t PPS 			: 1;
+  uint8_t timer11		: 1;
+  uint8_t GPSDataProcessed	: 1;
+  uint8_t unused		: 6;
 } gFlags;
 
 uint8_t gGPS_UART_buffer[GPS_UART_BUFFER_SIZE];
+uint8_t *pFullPeriodicPacket;
+
 
 //acc and gyro
 uint8_t reg_increment[1];	         // register increment
@@ -93,7 +96,7 @@ uint8_t acc_gyr_modes[2];     // low/normal modes for acc and gyr
 
 struct{
 	uint8_t data_acc_gyr[12];                    // data received from acc and gyr sensors
-	int16_t unpacked[6], acc_xx, acc_yy, acc_zz, gyr_xx, gyr_yy, gyr_zz;
+	int16_t acc_xx, acc_yy, acc_zz, gyr_xx, gyr_yy, gyr_zz;
 }gAccGyro;
 
 //temperature and humidity variables
@@ -146,6 +149,9 @@ uint16_t getNewlineIndex(uint8_t *array, uint16_t size, uint16_t num);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	// Paruosti pointeri dinaminiam masyvui, kad po to galima visada butu naudot realloc
+	// 	kadangi tas masyvas visada bus reikalingas, taip nereikes atlaisvinti uzimtos vietos
+	pFullPeriodicPacket = (uint8_t *) malloc(1);
 
   /* USER CODE END 1 */
 
@@ -179,49 +185,59 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int16_t beginning = 0, end = 0, length;
+  uint16_t beginning = 0, end = 0, length = 0;
   while (1){
+
+	//==================================== GPS PPS ====================================
     if (gFlags.PPS){
-      // Atstatyti veliava
-      gFlags.PPS = 0;
+		// Atstatyti veliava
+		gFlags.PPS = 0;
 
-      // Isvalyti masyva
-      memset(gGPS_UART_buffer, 0, sizeof gGPS_UART_buffer);
+		// Isvalyti masyva
+		memset(gGPS_UART_buffer, 0, sizeof gGPS_UART_buffer);
 
-      // Nuskaityti GPS duomenis
-      HAL_UART_Receive(&huart1, gGPS_UART_buffer, GPS_UART_BUFFER_SIZE, 700);
+		// Nuskaityti GPS duomenis
+		HAL_UART_Receive(&huart1, gGPS_UART_buffer, GPS_UART_BUFFER_SIZE, 150);
 
-      // Surasti nuskaitytos zinutes ilgi
-      length = strlen((char *)gGPS_UART_buffer);
-//      HAL_UART_Transmit_DMA(&huart6, gGPS_UART_buffer, length); // Pilnas paketas
-
-      // Surasti reikiamos eilutes pradzia ir pabaiga
-      beginning = getNewlineIndex(gGPS_UART_buffer, length, 1);
-      end = getNewlineIndex(gGPS_UART_buffer, length, 2);
-
-      length = end - beginning; // Surinktos eilutes ilgis
-
-      // Persiusti masyva per UART
-      HAL_UART_Transmit_DMA(&huart6, &gGPS_UART_buffer[beginning], length);
+		// Resetint Timerio perioda ir duot zenkla kad reikia perziuret gps duomenis
+		gFlags.GPSDataProcessed=0;
+		TIM11->CNT=0;
     }
 
+    //==================================== Timer IT ===================================
 	if(gFlags.timer11){
 		gFlags.timer11=0;
-		//todo
+
+	    //________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
+	    // Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
+	    HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
+	    HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
+	    HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
+	    HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_OUTX_L_G, 1, gAccGyro.data_acc_gyr, 12, 10);
+
+	    //____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
+	    for(uint8_t i=0; i<6; i++){
+	    	int16_t temp = (gAccGyro.data_acc_gyr[2*i+1] << 8) | gAccGyro.data_acc_gyr[2*i];
+	    	*(&gAccGyro.gyr_xx + i) = temp * i<3 ? 8.75/1000 : 0.061;
+	    }
+
+		if(!gFlags.GPSDataProcessed){
+			// Surasti reikiamos eilutes pradzia ir pabaiga
+			beginning = getNewlineIndex(gGPS_UART_buffer, length, 1);
+			end = getNewlineIndex(gGPS_UART_buffer, length, 2);
+			length = end - beginning;
+			gFlags.GPSDataProcessed=1;
+
+			pFullPeriodicPacket = (uint8_t *) realloc(pFullPeriodicPacket, length + 12);
+
+			memcpy(pFullPeriodicPacket + 12, &gGPS_UART_buffer[beginning], length);
+		}	// Naujausios eilutes is GPS masyvo paruosimas
+
+		// Atnaujinti sensoriu duomenis
+		memcpy(pFullPeriodicPacket, &gAccGyro.gyr_xx, 12);
+
+		HAL_UART_Transmit_DMA(&huart6, pFullPeriodicPacket, length + 12);
 	}
-
-    //________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
-    // Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
-    HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
-    HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
-    HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
-    HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_OUTX_L_G, 1, gAccGyro.data_acc_gyr, 12, 10);
-
-    //____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
-    for(uint8_t i=0; i<6; i++){
-    	int16_t temp = (gAccGyro.data_acc_gyr[2*i+1] << 8) | gAccGyro.data_acc_gyr[2*i];
-    	*(&gAccGyro.gyr_xx + i) = temp * i<3 ? 8.75/1000 : 0.061;
-    }
 
 
     //____________________READING DATA FROM TEMPERATURE AND HUMIDITY SENSOR
