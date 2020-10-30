@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -89,13 +90,14 @@ uint8_t gGPS_UART_buffer[GPS_UART_BUFFER_SIZE];
 uint8_t *pFullPeriodicPacket;
 
 //acc and gyro
-uint8_t reg_increment[1];	         // register increment
-uint8_t acc_gyr_on_values[2];  // turn on acc and gyr
-uint8_t acc_gyr_modes[2];     // low/normal modes for acc and gyr
-
+uint8_t reg_increment[1] = { 0x04 };	         // register increment
+uint8_t acc_gyr_on_values[2] = { 0x50, 0x50 };
+;
+// turn on acc and gyr
+uint8_t acc_gyr_modes[2] = { 0x10, 0x80 };     // low/normal modes for acc and gyr
 struct {
 	uint8_t data_acc_gyr[12];                    // data received from acc and gyr sensors
-	int16_t acc_xx, acc_yy, acc_zz, gyr_xx, gyr_yy, gyr_zz;
+	int16_t gyr_xx, gyr_yy, gyr_zz, acc_xx, acc_yy, acc_zz;
 } gAccGyro;
 
 //temperature and humidity variables
@@ -179,64 +181,69 @@ int main(void) {
 	/* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim11);
 
+	//LSM6DSL init
+	HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
+	HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
+	HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	uint16_t beginning = 0, end = 0, length = 0;
 	while (1) {
-
 		//==================================== GPS PPS ====================================
 		if (gFlags.PPS) {
 			// Atstatyti veliava
 			gFlags.PPS = 0;
+			TIM11->CNT = 0;
 
 			// Isvalyti masyva
-//		memset(gGPS_UART_buffer, 0, sizeof gGPS_UART_buffer);
+			memset(gGPS_UART_buffer, 0, sizeof gGPS_UART_buffer);
 
 			// Nuskaityti GPS duomenis
 			HAL_UART_Receive(&huart1, gGPS_UART_buffer, GPS_UART_BUFFER_SIZE, 150);
-			HAL_UART_Transmit_DMA(&huart6, gGPS_UART_buffer, strlen((char*) gGPS_UART_buffer) - 1);
 
 			// Resetint Timerio perioda ir duot zenkla kad reikia perziuret gps duomenis
 			gFlags.GPSDataProcessed = 0;
-			TIM11->CNT = 0;
 		}
 
 		//==================================== Timer IT ===================================
-//		if (gFlags.timer11) {
-//			gFlags.timer11 = 0;
-//
-//			//________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
-//			// Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
-//			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
-//			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
-//			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
-//			HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_OUTX_L_G, 1, gAccGyro.data_acc_gyr, 12, 10);
-//
-//			//____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
-//			for (uint8_t i = 0; i < 6; i++) {
-//				int16_t temp = (gAccGyro.data_acc_gyr[2 * i + 1] << 8) | gAccGyro.data_acc_gyr[2 * i];
-//				*(&gAccGyro.gyr_xx + i) = temp * i < 3 ? 8.75 / 1000 : 0.061;
-//			}
-//
-//			if (!gFlags.GPSDataProcessed) {
-//				// Surasti reikiamos eilutes pradzia ir pabaiga
-//				beginning = getNewlineIndex(gGPS_UART_buffer, length, 1) - 2;	// Itraukti ankstesni newline zinuciu atskyrimui
-//				end = getNewlineIndex(gGPS_UART_buffer, length, 2);
-//				length = end - beginning;
-//				gFlags.GPSDataProcessed = 1;
-//
-//				pFullPeriodicPacket = (uint8_t*) realloc(pFullPeriodicPacket, length + 12);
-//
-//				memcpy(pFullPeriodicPacket + 12, &gGPS_UART_buffer[beginning], length);
-//			}	// Naujausios eilutes is GPS masyvo paruosimas
+		if (gFlags.timer11) {
+			gFlags.timer11 = 0;
+
+			//________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
+			// Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
+			HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_OUTX_L_G, 1, gAccGyro.data_acc_gyr, 12, 10);
+
+			//____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
+			for (uint8_t i = 0; i < 6; i++) {
+				int16_t temp = (gAccGyro.data_acc_gyr[2 * i + 1] << 8) | gAccGyro.data_acc_gyr[2 * i];
+				*((uint16_t*) &gAccGyro.acc_xx + i) = (int16_t) ((float) temp * (i < 3 ? 8.75 / 1000 : 0.061));
+			}
+
+			if (!gFlags.GPSDataProcessed) {
+
+				beginning = end = 0;
+				for (uint16_t i = 1; i < strlen((char*) gGPS_UART_buffer); i++)
+					if (beginning == 0) {
+						if (gGPS_UART_buffer[i] == '$') beginning = i;
+					} else if (gGPS_UART_buffer[i] == '\r') {
+						end = i + 2;
+						break;
+					}
+				length = end - beginning;
+
+				pFullPeriodicPacket = (uint8_t*) realloc(pFullPeriodicPacket, length + 12);
+
+				memcpy(pFullPeriodicPacket + 12, &gGPS_UART_buffer[beginning], length);
+//				HAL_UART_Transmit(&huart6, pFullPeriodicPacket, length + 12, 10);
+				gFlags.GPSDataProcessed = 1;
+			}	// Naujausios eilutes is GPS masyvo paruosimas
 //
 //			// Atnaujinti sensoriu duomenis
-//			memcpy(pFullPeriodicPacket, &gAccGyro.gyr_xx, 12);
-//
-//			HAL_UART_Transmit_DMA(&huart6, pFullPeriodicPacket, length + 12);
-//		}
+			memcpy(pFullPeriodicPacket, &gAccGyro.data_acc_gyr, 12);
+			HAL_UART_Transmit(&huart6, pFullPeriodicPacket, length + 12, 10);
+		}
 //
 //		//____________________READING DATA FROM TEMPERATURE AND HUMIDITY SENSOR
 //
@@ -307,7 +314,7 @@ void SystemClock_Config(void) {
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
 	RCC_OscInitStruct.PLL.PLLM = 8;
-	RCC_OscInitStruct.PLL.PLLN = 84;
+	RCC_OscInitStruct.PLL.PLLN = 64;
 	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
 	RCC_OscInitStruct.PLL.PLLQ = 4;
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
@@ -373,9 +380,9 @@ static void MX_TIM11_Init(void) {
 
 	/* USER CODE END TIM11_Init 1 */
 	htim11.Instance = TIM11;
-	htim11.Init.Prescaler = 42000 - 1;
+	htim11.Init.Prescaler = 64000 - 1;
 	htim11.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim11.Init.Period = (2 * 245) - 1;
+	htim11.Init.Period = 245 - 1;
 	htim11.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim11.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 	if (HAL_TIM_Base_Init(&htim11) != HAL_OK) {
