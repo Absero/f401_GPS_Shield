@@ -223,7 +223,7 @@ int main(void)
 
 		if(!gFlags.GPSDataProcessed){
 			// Surasti reikiamos eilutes pradzia ir pabaiga
-			beginning = getNewlineIndex(gGPS_UART_buffer, length, 1);
+			beginning = getNewlineIndex(gGPS_UART_buffer, length, 1) - 2;	// Itraukti ankstesni newline zinuciu atskyrimui
 			end = getNewlineIndex(gGPS_UART_buffer, length, 2);
 			length = end - beginning;
 			gFlags.GPSDataProcessed=1;
