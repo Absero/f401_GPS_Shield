@@ -95,7 +95,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+// Who am I registro nuskaitymas is LSM6DSL
+#define slave_address 0xD7
+#define whoami_register 0x0F
+	uint8_t whoami_expected = 0x6A;
+	uint8_t whoami_received[1] = {0};
 /* USER CODE END 0 */
 
 /**
@@ -131,6 +135,21 @@ int main(void) {
 	MX_I2C1_Init();
 	/* USER CODE BEGIN 2 */
 
+
+	//whoamI registro nuskaitymas iš LSM6DSL
+	HAL_I2C_Mem_Read(&hi2c1, slave_address, whoami_register, 1, whoami_received, 1, 10);
+	if (whoami_expected == whoami_received[0])
+	{
+		// Nuskaicius teisinga adresa, siunciamas slave pavadinimas, komanda _OK ir whoami registro adresas
+		uint8_t MessageArray1[]="LSM6DSL_OK 0x6A";
+		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
+	}
+	else if (whoami_expected != whoami_received[0])
+	{
+		// Nuskaicius neteisinga adresa / neteisingai nuskaicius, siunciamas slave pavadinimas ir komanda _NOK
+		uint8_t MessageArray1[]="LSM6DSL_NOK";
+		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
+	}
 	// Svarbu keisti be antenos, nes tada periodine zinute trumpiausia
 #define targetBaud 230400
 #if targetBaud==230400
@@ -152,6 +171,7 @@ int main(void) {
 	HAL_Delay(230);  								//palaukt atsakymo
 	HAL_UART_DMAStop(&huart1);						//sustabdyt kad nebegaut periodiniu duomenu
 	HAL_Delay(10);
+
 #endif
 
 //	Pakeisti porto baud
@@ -165,22 +185,21 @@ int main(void) {
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 
-	HAL_UART_Receive_DMA(&huart1, onebyte, 1);	//pradet DMA (generuoja LABAI daug pertraukciu, gali trukdyt kitiem testam. Isjungus naudot PPS pertraukti)
+	//HAL_UART_Receive_DMA(&huart1, onebyte, 1);	//pradet DMA (generuoja LABAI daug pertraukciu, gali trukdyt kitiem testam. Isjungus naudot PPS pertraukti)
 	while (1) {
-
 		//patestuot ar gaunamas atsakymas kaip labore
 //		if (g_flags.PPS) {
 //			g_flags.PPS = 0;
-//
-//// 			Isvalyti masyva
-//			memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
-//
-//			// Nuskaityti GPS duomenis
-//			HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 300);
-//
-//			// Surasti nuskaitytos zinutes ilgi
-//			HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, strlen((char*) g_GPS_UART_buffer));  // Pilnas paketas
-//		}
+
+// 			Isvalyti masyva
+			//memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
+
+			// Nuskaityti GPS duomenis
+			//HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 300);
+
+			// Surasti nuskaitytos zinutes ilgi
+			//HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, strlen((char*) g_GPS_UART_buffer));  // Pilnas paketas
+		//}
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
