@@ -223,14 +223,29 @@ int main(void) {
 //
 			if (!gFlags.GPSDataProcessed) {
 				// Surasti reikiamos eilutes pradzia ir pabaiga
-				beginning = getNewlineIndex(gGPS_UART_buffer, length, 1) - 2;	// Itraukti ankstesni newline zinuciu atskyrimui
-				end = getNewlineIndex(gGPS_UART_buffer, length, 2);
+//				beginning = getNewlineIndex(gGPS_UART_buffer, length, 1);	// Itraukti ankstesni newline zinuciu atskyrimui
+//				end = getNewlineIndex(gGPS_UART_buffer, length, 2);
+
+				beginning = end = 0;
+				for (uint16_t i = 4; i < strlen((char*) gGPS_UART_buffer); i++) {
+					if (beginning == 0) {
+						if (gGPS_UART_buffer[i] == '$') {
+							beginning = i;
+						}
+					} else {
+						if (gGPS_UART_buffer[i] == '\r') {
+							end = i + 2;
+							break;
+						}
+					}
+				}
+
 				length = end - beginning;
 
-				pFullPeriodicPacket = (uint8_t*) realloc(pFullPeriodicPacket, length + 12);
+				pFullPeriodicPacket = (uint8_t*) realloc(pFullPeriodicPacket, length);
 
-				memcpy(pFullPeriodicPacket + 12, &gGPS_UART_buffer[beginning], length);
-				HAL_UART_Transmit_DMA(&huart6, gGPS_UART_buffer, strlen((char*) gGPS_UART_buffer) - 1);
+				memcpy(pFullPeriodicPacket, &gGPS_UART_buffer[beginning], length);
+				HAL_UART_Transmit(&huart6, pFullPeriodicPacket, length, 10);
 				gFlags.GPSDataProcessed = 1;
 			}	// Naujausios eilutes is GPS masyvo paruosimas
 //
