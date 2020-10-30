@@ -101,11 +101,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 #define HTS221_sl_add 0xBF // reading
 #define LPS22HB_sl_add 0xBB
 #define whoami_reg 0x0F
-	uint8_t LSM6DSL_whoami_expected = 0x6A;
-	uint8_t LSM303AGR_whoami_expected = 0x33;
-	uint8_t HTS221_whoami_expected = 0xBC;
-	uint8_t LPS22HB_whoami_expected = 0xB1;
-	uint8_t whoami_received[1] = {0};
+uint8_t LSM6DSL_whoami_expected = 0x6A;
+uint8_t LSM303AGR_whoami_expected = 0x33;
+uint8_t HTS221_whoami_expected = 0xBC;
+uint8_t LPS22HB_whoami_expected = 0xB1;
+uint8_t whoami_received[1] = { 0 };
 /* USER CODE END 0 */
 
 /**
@@ -145,11 +145,11 @@ int main(void) {
 	// WhoAmI registro nuskaitymas iš LSM6DSL
 	HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_sl_add, whoami_reg, 1, whoami_received, 1, 10);
 
-	if (LSM6DSL_whoami_expected == whoami_received[0]){
+	if (LSM6DSL_whoami_expected == whoami_received[0]) {
 		uint8_t MessageArray1[] = "LSM6DSL_OK 0x6A\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
 	}	// Nuskaicius teisinga adresa, siunciamas slave pavadinimas, komanda _OK ir whoami registro adresas
-	else{
+	else {
 		uint8_t MessageArray1[] = "LSM6DSL_NOK\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
 	}	// Nuskaicius neteisinga adresa / neteisingai nuskaicius, siunciamas slave pavadinimas ir komanda _NOK
@@ -158,10 +158,10 @@ int main(void) {
 	// WhoAmI registro nuskaitymas iš LSM303AGR
 	HAL_I2C_Mem_Read(&hi2c1, LSM303AGR_sl_add, whoami_reg, 1, whoami_received, 1, 10);
 
-	if (LSM303AGR_whoami_expected == whoami_received[0]){
+	if (LSM303AGR_whoami_expected == whoami_received[0]) {
 		uint8_t MessageArray1[] = "LSM303AGR_OK 0x33\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
-	}else if (LSM303AGR_whoami_expected != whoami_received[0]){
+	} else {
 		uint8_t MessageArray1[] = "LSM303AGR_NOK\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
 	}
@@ -169,11 +169,10 @@ int main(void) {
 
 	// WhoAmI registro nuskaitymas iš HTS221
 	HAL_I2C_Mem_Read(&hi2c1, HTS221_sl_add, whoami_reg, 1, whoami_received, 1, 10);
-	if (HTS221_whoami_expected == whoami_received[0]){
+	if (HTS221_whoami_expected == whoami_received[0]) {
 		uint8_t MessageArray1[] = "HTS221_OK 0xBC\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
-	}
-	else if (HTS221_whoami_expected != whoami_received[0]){
+	} else {
 		uint8_t MessageArray1[] = "HTS221_NOK\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
 	}
@@ -181,10 +180,10 @@ int main(void) {
 
 	// WhoAmI registro nuskaitymas iš LPS22HB
 	HAL_I2C_Mem_Read(&hi2c1, LPS22HB_sl_add, whoami_reg, 1, whoami_received, 1, 10);
-	if (LPS22HB_whoami_expected == whoami_received[0]){
+	if (LPS22HB_whoami_expected == whoami_received[0]) {
 		uint8_t MessageArray1[] = "LPS22HB_OK 0xB1\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
-	}else if (LPS22HB_whoami_expected != whoami_received[0]){
+	} else {
 		uint8_t MessageArray1[] = "LPS22HB_NOK\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
 	}
@@ -213,15 +212,10 @@ int main(void) {
 	HAL_UART_DMAStop(&huart1);						//sustabdyt kad nebegaut periodiniu duomenu
 	HAL_Delay(10);
 
-#endif
+	//	Pakeisti porto baud
+	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), targetBaud);		// naujas baud
 
-//	Pakeisti porto baud
-#if targetBaud==230400
-	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 230400);		// naujas baud
-#elif targetBaud==9600
-	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 9600);		// naujas baud
 #endif
-
 
 	while (!g_flags.PPS);	//palaukt zinutes pradzios
 	g_flags.PPS = 0;
