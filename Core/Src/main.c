@@ -141,59 +141,56 @@ int main(void) {
 	MX_I2C1_Init();
 	/* USER CODE BEGIN 2 */
 
-	//whoamI registro nuskaitymas iš LSM6DSL
+	//============================== Sensoriu Testas ==============================
+	// WhoAmI registro nuskaitymas iš LSM6DSL
 	HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_sl_add, whoami_reg, 1, whoami_received, 1, 10);
-	if (LSM6DSL_whoami_expected == whoami_received[0])
-	{// Nuskaicius teisinga adresa, siunciamas slave pavadinimas, komanda _OK ir whoami registro adresas
+
+	if (LSM6DSL_whoami_expected == whoami_received[0]){
 		uint8_t MessageArray1[] = "LSM6DSL_OK 0x6A\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
-	}
-	else if (LSM6DSL_whoami_expected != whoami_received[0])
-	{// Nuskaicius neteisinga adresa / neteisingai nuskaicius, siunciamas slave pavadinimas ir komanda _NOK
+	}	// Nuskaicius teisinga adresa, siunciamas slave pavadinimas, komanda _OK ir whoami registro adresas
+	else{
 		uint8_t MessageArray1[] = "LSM6DSL_NOK\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
-	}
+	}	// Nuskaicius neteisinga adresa / neteisingai nuskaicius, siunciamas slave pavadinimas ir komanda _NOK
 	HAL_Delay(20);
-	//whoamI registro nuskaitymas iš LSM303AGR
+
+	// WhoAmI registro nuskaitymas iš LSM303AGR
 	HAL_I2C_Mem_Read(&hi2c1, LSM303AGR_sl_add, whoami_reg, 1, whoami_received, 1, 10);
-	if (LSM303AGR_whoami_expected == whoami_received[0])
-	{// Nuskaicius teisinga adresa, siunciamas slave pavadinimas, komanda _OK ir whoami registro adresas
+
+	if (LSM303AGR_whoami_expected == whoami_received[0]){
 		uint8_t MessageArray1[] = "LSM303AGR_OK 0x33\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
-	}
-	else if (LSM303AGR_whoami_expected != whoami_received[0])
-	{// Nuskaicius neteisinga adresa / neteisingai nuskaicius, siunciamas slave pavadinimas ir komanda _NOK
+	}else if (LSM303AGR_whoami_expected != whoami_received[0]){
 		uint8_t MessageArray1[] = "LSM303AGR_NOK\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
 	}
 	HAL_Delay(20);
-	//whoamI registro nuskaitymas iš HTS221
+
+	// WhoAmI registro nuskaitymas iš HTS221
 	HAL_I2C_Mem_Read(&hi2c1, HTS221_sl_add, whoami_reg, 1, whoami_received, 1, 10);
-	if (HTS221_whoami_expected == whoami_received[0])
-	{// Nuskaicius teisinga adresa, siunciamas slave pavadinimas, komanda _OK ir whoami registro adresas
+	if (HTS221_whoami_expected == whoami_received[0]){
 		uint8_t MessageArray1[] = "HTS221_OK 0xBC\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
 	}
-	else if (HTS221_whoami_expected != whoami_received[0])
-	{// Nuskaicius neteisinga adresa / neteisingai nuskaicius, siunciamas slave pavadinimas ir komanda _NOK
+	else if (HTS221_whoami_expected != whoami_received[0]){
 		uint8_t MessageArray1[] = "HTS221_NOK\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
 	}
 	HAL_Delay(20);
-	//whoamI registro nuskaitymas iš LPS22HB
+
+	// WhoAmI registro nuskaitymas iš LPS22HB
 	HAL_I2C_Mem_Read(&hi2c1, LPS22HB_sl_add, whoami_reg, 1, whoami_received, 1, 10);
-	if (LPS22HB_whoami_expected == whoami_received[0])
-	{// Nuskaicius teisinga adresa, siunciamas slave pavadinimas, komanda _OK ir whoami registro adresas
+	if (LPS22HB_whoami_expected == whoami_received[0]){
 		uint8_t MessageArray1[] = "LPS22HB_OK 0xB1\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
-	}
-	else if (LPS22HB_whoami_expected != whoami_received[0])
-	{// Nuskaicius neteisinga adresa / neteisingai nuskaicius, siunciamas slave pavadinimas ir komanda _NOK
-		uint8_t MessageArray1[] = " LPS22HB_NOK\r\n";
+	}else if (LPS22HB_whoami_expected != whoami_received[0]){
+		uint8_t MessageArray1[] = "LPS22HB_NOK\r\n";
 		HAL_UART_Transmit_DMA(&huart6, MessageArray1, strlen((char*) MessageArray1));
 	}
 	HAL_Delay(20);
 
+	//============================== Baud Pakeitimas ==============================
 	// Svarbu keisti be antenos, nes tada periodine zinute trumpiausia
 #define targetBaud 230400
 #if targetBaud==230400
@@ -224,26 +221,25 @@ int main(void) {
 #elif targetBaud==9600
 	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 9600);		// naujas baud
 #endif
+
+
+	while (!g_flags.PPS);	//palaukt zinutes pradzios
+	g_flags.PPS = 0;
+
+	//Isvalyti masyva
+	memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
+
+	// Nuskaityti GPS duomenis
+	HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 750);
+
+	// Issiusti gauta paketa
+	HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, strlen((char*) g_GPS_UART_buffer));
+
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
-
-	//HAL_UART_Receive_DMA(&huart1, onebyte, 1);	//pradet DMA (generuoja LABAI daug pertraukciu, gali trukdyt kitiem testam. Isjungus naudot PPS pertraukti)
 	while (1) {
-	//	//patestuot ar gaunamas atsakymas kaip labore
-	//	if (g_flags.PPS) {
-		//	g_flags.PPS = 0;
-//
- //			//Isvalyti masyva
-	//		memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
-//
-	//		// Nuskaityti GPS duomenis
-		//	HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 300);
-//
-	//		// Surasti nuskaitytos zinutes ilgi
-		//	HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, strlen((char*) g_GPS_UART_buffer));  // Pilnas paketas
-	//	}
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
