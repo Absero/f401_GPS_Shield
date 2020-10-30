@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -183,30 +184,30 @@ int main(void) {
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
-	uint16_t beginning = 0, end = 0, length = 0;
+	uint16_t beginning = 0, end = 0, length = 0, combocounter = 0;
 	while (1) {
-
 		//==================================== GPS PPS ====================================
 		if (gFlags.PPS) {
 			// Atstatyti veliava
 			gFlags.PPS = 0;
+			TIM11->CNT = 0;
 
 			// Isvalyti masyva
-//		memset(gGPS_UART_buffer, 0, sizeof gGPS_UART_buffer);
+			memset(gGPS_UART_buffer, 0, sizeof gGPS_UART_buffer);
 
 			// Nuskaityti GPS duomenis
 			HAL_UART_Receive(&huart1, gGPS_UART_buffer, GPS_UART_BUFFER_SIZE, 150);
-			HAL_UART_Transmit_DMA(&huart6, gGPS_UART_buffer, strlen((char*) gGPS_UART_buffer) - 1);
+//			HAL_UART_Transmit_DMA(&huart6, gGPS_UART_buffer, strlen((char*) gGPS_UART_buffer) - 1);
 
 			// Resetint Timerio perioda ir duot zenkla kad reikia perziuret gps duomenis
 			gFlags.GPSDataProcessed = 0;
-			TIM11->CNT = 0;
+			combocounter = 1;
 		}
 
 		//==================================== Timer IT ===================================
-//		if (gFlags.timer11) {
-//			gFlags.timer11 = 0;
-//
+		if (gFlags.timer11) {
+			gFlags.timer11 = 0;
+
 //			//________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
 //			// Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
 //			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
@@ -235,8 +236,10 @@ int main(void) {
 //			// Atnaujinti sensoriu duomenis
 //			memcpy(pFullPeriodicPacket, &gAccGyro.gyr_xx, 12);
 //
-//			HAL_UART_Transmit_DMA(&huart6, pFullPeriodicPacket, length + 12);
-//		}
+			uint8_t masyvas[11];
+			sprintf((char*) masyvas, "%3d | %2d\r\n", (int) TIM11->CNT, (int) combocounter++);
+			HAL_UART_Transmit_DMA(&huart6, masyvas, strlen((char*) masyvas) - 1);
+		}
 //
 //		//____________________READING DATA FROM TEMPERATURE AND HUMIDITY SENSOR
 //
@@ -307,7 +310,7 @@ void SystemClock_Config(void) {
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
 	RCC_OscInitStruct.PLL.PLLM = 8;
-	RCC_OscInitStruct.PLL.PLLN = 84;
+	RCC_OscInitStruct.PLL.PLLN = 64;
 	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
 	RCC_OscInitStruct.PLL.PLLQ = 4;
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
@@ -373,9 +376,9 @@ static void MX_TIM11_Init(void) {
 
 	/* USER CODE END TIM11_Init 1 */
 	htim11.Instance = TIM11;
-	htim11.Init.Prescaler = 42000 - 1;
+	htim11.Init.Prescaler = 64000 - 1;
 	htim11.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim11.Init.Period = (2 * 245) - 1;
+	htim11.Init.Period = 245 - 1;
 	htim11.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim11.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 	if (HAL_TIM_Base_Init(&htim11) != HAL_OK) {
