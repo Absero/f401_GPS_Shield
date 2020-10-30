@@ -216,10 +216,10 @@ int main(void) {
 			HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_OUTX_L_G, 1, gAccGyro.data_acc_gyr, 12, 10);
 
 			//____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
-			for (uint8_t i = 0; i < 6; i++) {
-				int16_t temp = (gAccGyro.data_acc_gyr[2 * i + 1] << 8) | gAccGyro.data_acc_gyr[2 * i];
-				*((uint16_t*) &gAccGyro.acc_xx + i) = (int16_t) ((float) temp * i < 3 ? 8.75 / 1000 : 0.061);
-			}
+//			for (uint8_t i = 0; i < 6; i++) {
+//				int16_t temp = (gAccGyro.data_acc_gyr[2 * i + 1] << 8) | gAccGyro.data_acc_gyr[2 * i];
+//				*((uint16_t*) &gAccGyro.acc_xx + i) = (int16_t) ((float) temp * (i < 3 ? 8.75 / 1000 : 0.061));
+//			}
 
 			if (!gFlags.GPSDataProcessed) {
 
