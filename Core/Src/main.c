@@ -33,31 +33,31 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define _GPS_UART_BUFFER_SIZE 2000
+#define GPS_UART_BUFFER_SIZE 2000
 
-#define _LSM6DSL_ADDRESS 0xD7
-#define _LSM6DSL_CTRL3_C 0x12    // control register for incrementing
-#define _LSM6DSL_ACC_ON_REG 0x10 // acc mode (turns on acc)
-#define _LSM6DSL_CTRL6_C 0x15    // control register for acc modes
-#define _LSM6DSL_OUTX_L_G 0x22   // first register of gyr reading
+#define LSM6DSL_ADDRESS 0xD7
+#define LSM6DSL_CTRL3_C 0x12    // control register for incrementing
+#define LSM6DSL_ACC_ON_REG 0x10 // acc mode (turns on acc)
+#define LSM6DSL_CTRL6_C 0x15    // control register for acc modes
+#define LSM6DSL_OUTX_L_G 0x22   // first register of gyr reading
 
 //temperature and humidity variables
-#define _HTS221_ADDRESS 0xBC
-#define _HTS221_WRITING_TH 0xBE
-#define _HTS221_READING_TH 0xBF
+#define HTS221_ADDRESS 0xBC
+#define HTS221_WRITING_TH 0xBE
+#define HTS221_READING_TH 0xBF
 
 //magnetometer variables
-#define _LSM303_MAGN_ADDRESS 0x33        // magnetometer sensor adress
-#define _LSM303_READING_MAGN 0x3D        // adress to read from magn sensor registers
-#define _LSM303_WRITING_MAGN 0x3C        // address to write to magn sensor registers
-#define _LSM303_MAGN_ON_MODE 0x60        // control register to turn on magnetometer
-#define _LSM303_OUTX_L_REG_M 0x68 | 0x80 // magnetometer XX YY ZZ
+#define LSM303_MAGN_ADDRESS 0x33        // magnetometer sensor adress
+#define LSM303_READING_MAGN 0x3D        // adress to read from magn sensor registers
+#define LSM303_WRITING_MAGN 0x3C        // address to write to magn sensor registers
+#define LSM303_MAGN_ON_MODE 0x60        // control register to turn on magnetometer
+#define LSM303_OUTX_L_REG_M 0x68 | 0x80 // magnetometer XX YY ZZ
 
 //ACC
-#define _LSM303_WRITING_ACC2 0x32 // address to write to acc registers
-#define _LSM303_READING_ACC2 0x33 // address to read from acc registers
-#define _LSM303_CTRL_REG1_A 0x20  // modes register
-#define _LSM303_REG_OUT_ACC2 0x28 // first register to output data
+#define LSM303_WRITING_ACC2 0x32 // address to write to acc registers
+#define LSM303_READING_ACC2 0x33 // address to read from acc registers
+#define LSM303_CTRL_REG1_A 0x20  // modes register
+#define LSM303_REG_OUT_ACC2 0x28 // first register to output data
 
 /* USER CODE END PD */
 
@@ -76,19 +76,22 @@ DMA_HandleTypeDef hdma_usart6_tx;
 
 /* USER CODE BEGIN PV */
 
-struct
-{
+struct{
   uint8_t PPS : 1;
   uint8_t unused : 7;
-} g_flags;
+} gFlags;
 
-uint8_t g_GPS_UART_buffer[_GPS_UART_BUFFER_SIZE];
+uint8_t gGPS_UART_buffer[GPS_UART_BUFFER_SIZE];
 
-uint8_t reg_increment[1] = {0x04};           // register increment
-uint8_t acc_gyr_on_values[2] = {0x50, 0x50}; // turn on acc and gyr
-uint8_t acc_gyr_modes[2] = {0x10, 0x80};     // low/normal modes for acc and gyr
-uint8_t data_acc_gyr[12];                    // data received from acc and gyr sensors
-int16_t unpacked[6], acc_xx, acc_yy, acc_zz, gyr_xx, gyr_yy, gyr_zz;
+//acc and gyro
+uint8_t reg_increment[1];	         // register increment
+uint8_t acc_gyr_on_values[2]; // turn on acc and gyr
+uint8_t acc_gyr_modes[2];     // low/normal modes for acc and gyr
+
+struct{
+	uint8_t data_acc_gyr[12];                    // data received from acc and gyr sensors
+	int16_t unpacked[6], acc_xx, acc_yy, acc_zz, gyr_xx, gyr_yy, gyr_zz;
+}gAccGyro;
 
 //temperature and humidity variables
 uint8_t hum_temp_on[2] = {0x20, 0x83}; //turn on sensor + 12.5Hz, NOT one-shot
@@ -107,8 +110,6 @@ int16_t unpacked_magn[3], magn_x, magn_y, magn_z;
 uint8_t reg[1] = {0x57}; // normal mode on
 uint8_t data_acc2[12];
 int32_t unpacked_acc2[3];
-
-uint16_t checkout;
 
 /* USER CODE END PV */
 
@@ -171,55 +172,44 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   int16_t beginning = 0, end = 0, length;
-  while (1)
-  {
-    if (g_flags.PPS)
-    {
+  while (1){
+    if (gFlags.PPS){
       // Atstatyti veliava
-      g_flags.PPS = 0;
+      gFlags.PPS = 0;
 
       // Isvalyti masyva
-      memset(g_GPS_UART_buffer, 0, sizeof g_GPS_UART_buffer);
+      memset(gGPS_UART_buffer, 0, sizeof gGPS_UART_buffer);
 
       // Nuskaityti GPS duomenis
-      HAL_UART_Receive(&huart1, g_GPS_UART_buffer, _GPS_UART_BUFFER_SIZE, 700);
+      HAL_UART_Receive(&huart1, gGPS_UART_buffer, GPS_UART_BUFFER_SIZE, 700);
 
       // Surasti nuskaitytos zinutes ilgi
-      length = strlen((char *)g_GPS_UART_buffer);
-      HAL_UART_Transmit_DMA(&huart6, g_GPS_UART_buffer, length); // Pilnas paketas
+      length = strlen((char *)gGPS_UART_buffer);
+//      HAL_UART_Transmit_DMA(&huart6, gGPS_UART_buffer, length); // Pilnas paketas
 
       // Surasti reikiamos eilutes pradzia ir pabaiga
-      beginning = getNewlineIndex(g_GPS_UART_buffer, length, 1);
-      end = getNewlineIndex(g_GPS_UART_buffer, length, 2);
+      beginning = getNewlineIndex(gGPS_UART_buffer, length, 1);
+      end = getNewlineIndex(gGPS_UART_buffer, length, 2);
 
       length = end - beginning; // Surinktos eilutes ilgis
 
       // Persiusti masyva per UART
-//      HAL_UART_Transmit_DMA(&huart6, &g_GPS_UART_buffer[beginning], length);
-
+      HAL_UART_Transmit_DMA(&huart6, &gGPS_UART_buffer[beginning], length);
     }
 
     //________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
     // Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
-    HAL_I2C_Mem_Write(&hi2c1, _LSM6DSL_ADDRESS, _LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
-    HAL_I2C_Mem_Write(&hi2c1, _LSM6DSL_ADDRESS, _LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
-    HAL_I2C_Mem_Write(&hi2c1, _LSM6DSL_ADDRESS, _LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
-    HAL_I2C_Mem_Read(&hi2c1, _LSM6DSL_ADDRESS, _LSM6DSL_OUTX_L_G, 1, data_acc_gyr, 12, 10);
+    HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
+    HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
+    HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
+    HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_OUTX_L_G, 1, gAccGyro.data_acc_gyr, 12, 10);
 
     //____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
-    int k = 0;
-    for (int i = 0; i < 6; i++)
-    {
-      unpacked[i] = (data_acc_gyr[k + 1] << 8) | data_acc_gyr[k];
-      k = k + 2;
+    for(uint8_t i=0; i<6; i++){
+    	int16_t temp = (gAccGyro.data_acc_gyr[2*i+1] << 8) | gAccGyro.data_acc_gyr[2*i];
+    	*(&gAccGyro.gyr_xx + i) = temp * i<3 ? 8.75/1000 : 0.061;
     }
-    gyr_xx = unpacked[0] * 8.75 / 1000;
-    gyr_yy = unpacked[1] * 8.75 / 1000;
-    gyr_zz = unpacked[2] * 8.75 / 1000;
-    acc_xx = unpacked[3] * 0.061;
-    //komentaras
-    acc_yy = unpacked[4] * 0.061;
-    acc_zz = unpacked[5] * 0.061;
+
 
     //____________________READING DATA FROM TEMPERATURE AND HUMIDITY SENSOR
 
@@ -243,13 +233,11 @@ int main(void)
 
     //___________________READING DATA FROM AKSELEROMETER AND MANGETOMETER
 
-    HAL_I2C_Mem_Write(&hi2c1, _LSM303_WRITING_MAGN, _LSM303_MAGN_ON_MODE, 1, magn_on, 1, 10);
-    HAL_I2C_Mem_Read(&hi2c1, _LSM303_READING_MAGN, _LSM303_OUTX_L_REG_M, 1, data_magn, 6, 10);
+    HAL_I2C_Mem_Write(&hi2c1, LSM303_WRITING_MAGN, LSM303_MAGN_ON_MODE, 1, magn_on, 1, 10);
+    HAL_I2C_Mem_Read(&hi2c1, LSM303_READING_MAGN, LSM303_OUTX_L_REG_M, 1, data_magn, 6, 10);
 
     //___________________UNPACKING DATA, MAGNETOMETER
-    k = 0;
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0, k = 0; i < 3; i++){
       unpacked_magn[i] = (data_magn[k + 1] << 8) | data_magn[k];
       k = k + 2;
     }
@@ -258,8 +246,8 @@ int main(void)
     magn_z = unpacked_magn[2];
 
     //___________________READING DATA FROM ACCELEROMETER
-    HAL_I2C_Mem_Write(&hi2c1, _LSM303_WRITING_ACC2, _LSM303_CTRL_REG1_A, 1, reg, 1, 10);
-    HAL_I2C_Mem_Read(&hi2c1, _LSM303_READING_ACC2, _LSM303_REG_OUT_ACC2, 1, data_acc2, 12, 10);
+    HAL_I2C_Mem_Write(&hi2c1, LSM303_WRITING_ACC2, LSM303_CTRL_REG1_A, 1, reg, 1, 10);
+    HAL_I2C_Mem_Read(&hi2c1, LSM303_READING_ACC2, LSM303_REG_OUT_ACC2, 1, data_acc2, 12, 10);
 
     // twos complement left-justified xxxx xxxx xx00 0000
     unpacked_acc2[0] = ((data_acc2[3] & 0xC0) << 18) | (data_acc2[2] << 10) | ((data_acc2[1] & 0xC0) << 8) | data_acc2[0];
@@ -480,7 +468,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   if (GPIO_Pin == GPIO_PIN_10)
   {
     // Duoti zenkla, kad bus siunciami duomenys is GPS, juos nuskaityti while(0) cikle
-    g_flags.PPS = 1;
+    gFlags.PPS = 1;
   }
 }
 
