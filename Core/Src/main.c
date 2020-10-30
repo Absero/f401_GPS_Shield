@@ -218,13 +218,10 @@ int main(void) {
 			//____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
 			for (uint8_t i = 0; i < 6; i++) {
 				int16_t temp = (gAccGyro.data_acc_gyr[2 * i + 1] << 8) | gAccGyro.data_acc_gyr[2 * i];
-				*(&gAccGyro.gyr_xx + i) = temp * i < 3 ? 8.75 / 1000 : 0.061;
+				*((uint16_t*) &gAccGyro.acc_xx + i) = (int16_t) ((float) temp * i < 3 ? 8.75 / 1000 : 0.061);
 			}
-//
+
 			if (!gFlags.GPSDataProcessed) {
-				// Surasti reikiamos eilutes pradzia ir pabaiga
-//				beginning = getNewlineIndex(gGPS_UART_buffer, length, 1);	// Itraukti ankstesni newline zinuciu atskyrimui
-//				end = getNewlineIndex(gGPS_UART_buffer, length, 2);
 
 				beginning = end = 0;
 				for (uint16_t i = 1; i < strlen((char*) gGPS_UART_buffer); i++)
@@ -239,12 +236,13 @@ int main(void) {
 				pFullPeriodicPacket = (uint8_t*) realloc(pFullPeriodicPacket, length + 12);
 
 				memcpy(pFullPeriodicPacket + 12, &gGPS_UART_buffer[beginning], length);
-				HAL_UART_Transmit(&huart6, pFullPeriodicPacket + 12, length + 12, 10);
+//				HAL_UART_Transmit(&huart6, pFullPeriodicPacket, length + 12, 10);
 				gFlags.GPSDataProcessed = 1;
 			}	// Naujausios eilutes is GPS masyvo paruosimas
 //
 //			// Atnaujinti sensoriu duomenis
-//			memcpy(pFullPeriodicPacket, &gAccGyro.gyr_xx, 12);
+			memcpy(pFullPeriodicPacket, &gAccGyro.acc_xx, 12);
+			HAL_UART_Transmit(&huart6, pFullPeriodicPacket, length + 12, 10);
 		}
 //
 //		//____________________READING DATA FROM TEMPERATURE AND HUMIDITY SENSOR
