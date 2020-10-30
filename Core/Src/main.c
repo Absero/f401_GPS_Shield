@@ -90,10 +90,11 @@ uint8_t gGPS_UART_buffer[GPS_UART_BUFFER_SIZE];
 uint8_t *pFullPeriodicPacket;
 
 //acc and gyro
-uint8_t reg_increment[1];	         // register increment
-uint8_t acc_gyr_on_values[2];  // turn on acc and gyr
-uint8_t acc_gyr_modes[2];     // low/normal modes for acc and gyr
-
+uint8_t reg_increment[1] = { 0x04 };	         // register increment
+uint8_t acc_gyr_on_values[2] = { 0x50, 0x50 };
+;
+// turn on acc and gyr
+uint8_t acc_gyr_modes[2] = { 0x10, 0x80 };     // low/normal modes for acc and gyr
 struct {
 	uint8_t data_acc_gyr[12];                    // data received from acc and gyr sensors
 	int16_t acc_xx, acc_yy, acc_zz, gyr_xx, gyr_yy, gyr_zz;
@@ -206,18 +207,18 @@ int main(void) {
 		if (gFlags.timer11) {
 			gFlags.timer11 = 0;
 
-//			//________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
-//			// Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
-//			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
-//			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
-//			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
-//			HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_OUTX_L_G, 1, gAccGyro.data_acc_gyr, 12, 10);
-//
-//			//____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
-//			for (uint8_t i = 0; i < 6; i++) {
-//				int16_t temp = (gAccGyro.data_acc_gyr[2 * i + 1] << 8) | gAccGyro.data_acc_gyr[2 * i];
-//				*(&gAccGyro.gyr_xx + i) = temp * i < 3 ? 8.75 / 1000 : 0.061;
-//			}
+			//________________ READING DATA FROM ACCELEROMETER AND GYROSCOPE
+			// Turn on acc and reg, auto increment, set low/normal modes for acc and gyr, read data
+			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_ACC_ON_REG, 1, acc_gyr_on_values, 2, 10);
+			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL3_C, 1, reg_increment, 1, 10);
+			HAL_I2C_Mem_Write(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_CTRL6_C, 1, acc_gyr_modes, 2, 10);
+			HAL_I2C_Mem_Read(&hi2c1, LSM6DSL_ADDRESS, LSM6DSL_OUTX_L_G, 1, gAccGyro.data_acc_gyr, 12, 10);
+
+			//____________ UNPACKING DATA FROM ACCELEROMETER AND GYROSCOPE
+			for (uint8_t i = 0; i < 6; i++) {
+				int16_t temp = (gAccGyro.data_acc_gyr[2 * i + 1] << 8) | gAccGyro.data_acc_gyr[2 * i];
+				*(&gAccGyro.gyr_xx + i) = temp * i < 3 ? 8.75 / 1000 : 0.061;
+			}
 //
 			if (!gFlags.GPSDataProcessed) {
 				// Surasti reikiamos eilutes pradzia ir pabaiga
