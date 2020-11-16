@@ -192,25 +192,25 @@ int main(void) {
 	//============================== Baud Pakeitimas ==============================
 	// Svarbu keisti be antenos, nes tada periodine zinute trumpiausia
 #define targetBaud 230400
-#if targetBaud==230400
-	uint8_t messageArray[] = "$PSTMSETPAR,3102,0xB*11\r\n$PSTMSAVEPAR*58\r\n$PSTMSRR*49\r\n";  //230400
-	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 9600);		// dabartinis baud
-#elif targetBaud==9600
-	uint8_t messageArray[] = "$PSTMSETPAR,3102,0x5*66\r\n$PSTMSAVEPAR*58\r\n$PSTMSRR*49\r\n";  //9600
-	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 230400);  	// dabartinis baud
-#endif
+//#if targetBaud==230400
+//	uint8_t messageArray[] = "$PSTMSETPAR,3102,0xB*11\r\n$PSTMSAVEPAR*58\r\n$PSTMSRR*49\r\n";  //230400
+//	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 9600);		// dabartinis baud
+//#elif targetBaud==9600
+//	uint8_t messageArray[] = "$PSTMSETPAR,3102,0x5*66\r\n$PSTMSAVEPAR*58\r\n$PSTMSRR*49\r\n";  //9600
+//	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), 230400);  	// dabartinis baud
+//#endif
 
 //	Nusiusti nustatymus
 #if targetBaud
-	while (!g_flags.PPS);	//palaukt zinutes pradzios
-	g_flags.PPS = 0;
-	HAL_Delay(750);  //palaukt kol pasibaigs zinute
-
-	HAL_UART_Receive_DMA(&huart1, onebyte, 1);		//pradet DMA kad pamatyt atsakyma
-	HAL_UART_Transmit_DMA(&huart1, messageArray, sizeof(messageArray) - 1);  //issiust zinute
-	HAL_Delay(230);  								//palaukt atsakymo
-	HAL_UART_DMAStop(&huart1);						//sustabdyt kad nebegaut periodiniu duomenu
-	HAL_Delay(10);
+//	while (!g_flags.PPS);	//palaukt zinutes pradzios
+//	g_flags.PPS = 0;
+//	HAL_Delay(750);  //palaukt kol pasibaigs zinute
+//
+//	HAL_UART_Receive_DMA(&huart1, onebyte, 1);		//pradet DMA kad pamatyt atsakyma
+//	HAL_UART_Transmit_DMA(&huart1, messageArray, sizeof(messageArray) - 1);  //issiust zinute
+//	HAL_Delay(230);  								//palaukt atsakymo
+//	HAL_UART_DMAStop(&huart1);						//sustabdyt kad nebegaut periodiniu duomenu
+//	HAL_Delay(10);
 
 	//	Pakeisti porto baud
 	huart1.Instance->BRR = UART_BRR_SAMPLING16(HAL_RCC_GetPCLK2Freq(), targetBaud);		// naujas baud
